@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  web:
+    container_name: nextjs_portfolio
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # INI PENTING: Oper variabel dari .env ke dalam proses build Docker
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        MAILJET_API_KEY: ${MAILJET_API_KEY}
+        MAILJET_SECRET_KEY: ${MAILJET_SECRET_KEY}
+        NEXT_PUBLIC_EMAIL: ${NEXT_PUBLIC_EMAIL}
+    restart: always
+    ports:
+      - "3000:3000"
+    # Env variables untuk Runtime (saat aplikasi jalan)
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production

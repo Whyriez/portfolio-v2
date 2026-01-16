@@ -2,7 +2,25 @@ import NextImage from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-function PortfolioCard({ category, title, description, tags, link, images }) {
+interface PortfolioCardProps {
+  category: string;
+  title: string;
+  description: string;
+  tags: string[];
+  link?: string;
+  images?: string;
+}
+
+
+function PortfolioCard({
+  category,
+  title,
+  description,
+  tags,
+  link,
+  images,
+}: PortfolioCardProps) {
+
  const safeGradients = [
   { from: 'from-yellow-400', to: 'to-lime-500' },
   { from: 'from-green-400', to: 'to-emerald-500' },
@@ -37,7 +55,7 @@ function PortfolioCard({ category, title, description, tags, link, images }) {
         <div className={`h-48 bg-gradient-to-r ${randomGradient.from} ${randomGradient.to} relative`}>
           <NextImage
             className="w-48 h-48 object-contain absolute bottom-0 left-1/2 -translate-x-1/2"
-            src={images}
+            src={images || "/dev4.png"}
             width={192} // 12rem = 192px
             height={192}
             alt="project images"
@@ -45,7 +63,7 @@ function PortfolioCard({ category, title, description, tags, link, images }) {
         </div>
 
         <div className="absolute inset-0 bg-black/0 hover:bg-black/50 flex items-center justify-center transition-all opacity-0 hover:opacity-100">
-          <Link href={link} target="__BLANK" className="px-4 py-2 bg-white dark:bg-gray-800 rounded-full text-gray-800 font-medium transform -translate-y-4 hover:translate-y-0 transition-all">
+          <Link href={link || '-'} target="__BLANK" className="px-4 py-2 bg-white dark:bg-gray-800 rounded-full text-gray-800 font-medium transform -translate-y-4 hover:translate-y-0 transition-all">
             View Project
           </Link>
         </div>
@@ -68,8 +86,8 @@ function PortfolioCard({ category, title, description, tags, link, images }) {
   );
 }
 
-function getTagStyle(tag) {
-  const tagColors = {
+function getTagStyle(tag: string): string {
+  const tagColors: Record<string, string> = {
     React: "bg-blue-100 text-blue-600",
     "Node.js": "bg-green-100 text-green-600",
     "React Native": "bg-blue-100 text-blue-600",

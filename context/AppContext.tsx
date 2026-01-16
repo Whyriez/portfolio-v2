@@ -2,29 +2,36 @@
 
 import { createContext, useState, useContext, useEffect } from "react";
 
-const AppContext = createContext();
+type AppContextType = {
+  darkMode: boolean;
+  toggleDarkMode: () => void;
+  activePage: number;
+  setActivePage: React.Dispatch<React.SetStateAction<number>>;
+  mobileSidebar: boolean;
+};
 
-export function AppProvider({ children }) {
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
   const [darkMode, setDarkMode] = useState(false);
   const [activePage, setActivePage] = useState(0);
   const [mobileSidebar, setMobileSidebar] = useState(false);
 
   useEffect(() => {
-    // Cek preferensi dark mode dari localStorage dan fallback ke preferensi sistem jika tidak ada
     const savedDarkMode = localStorage.getItem("darkMode");
     const isDark = savedDarkMode
       ? JSON.parse(savedDarkMode)
       : window.matchMedia("(prefers-color-scheme: dark)").matches;
+
     setDarkMode(isDark);
     document.body.classList.toggle("dark-mode", isDark);
     document.documentElement.classList.toggle("dark", isDark);
 
-    // Menangani perubahan ukuran layar untuk sidebar mobile
     const handleResize = () => {
       setMobileSidebar(window.innerWidth < 768);
     };
 
-    handleResize(); // Cek ukuran layar awal
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -32,9 +39,9 @@ export function AppProvider({ children }) {
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    localStorage.setItem("darkMode", newMode);
+    localStorage.setItem("darkMode", JSON.stringify(newMode));
     document.body.classList.toggle("dark-mode", newMode);
-     document.documentElement.classList.toggle('dark', newMode);
+    document.documentElement.classList.toggle("dark", newMode);
   };
 
   return (
@@ -53,5 +60,9 @@ export function AppProvider({ children }) {
 }
 
 export function useAppContext() {
-  return useContext(AppContext);
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error("useAppContext must be used within AppProvider");
+  }
+  return context;
 }

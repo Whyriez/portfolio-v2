@@ -1,6 +1,20 @@
 import Image from "next/image";
 
-function ReviewCard({ nama, profile, review, textColor, gradient }) {
+interface ReviewCardProps {
+  nama: string;
+  profile: string;
+  review: string;
+  textColor: string;
+  gradient: string;
+}
+
+function ReviewCard({
+  nama,
+  profile,
+  review,
+  textColor,
+  gradient,
+}: ReviewCardProps) {
   return (
     <div
       className={`glassmorphism review-card rounded-xl p-6 relative review-item`}
@@ -9,7 +23,7 @@ function ReviewCard({ nama, profile, review, textColor, gradient }) {
       <div className="quote-mark quote-mark-left">"</div>
       <div className="flex items-center mb-4">
         {profile !==
-        "https://firebasestorage.googleapis.com/v0/b/portofolio-3f147.appspot.com/o/reviewProfiles%2Fdefault-profile.jpg?alt=media&token=5404c34d-d5c2-43bf-a12f-4270d19d46c5" ? (
+        "https://supabase1.limapp.my.id/storage/v1/object/public/portfolio//default-profile.jpg" ? (
           <Image
             className="rounded-full h-[40px] w-[40px] object-cover object-center mr-4"
             src={profile}

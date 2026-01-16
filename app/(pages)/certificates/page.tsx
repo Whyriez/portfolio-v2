@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { useAppContext } from "@/context/AppContext";
 import Image from "next/image";
 
@@ -45,7 +45,7 @@ const themeConfig: Record<string, any> = {
     ),
   },
   General: {
-    gradient: "from-cyan-400 to-sky-500", 
+    gradient: "from-cyan-400 to-sky-500",
     text: "text-cyan-600",
     bg: "bg-cyan-50 dark:bg-cyan-900/20",
     border: "border-cyan-200 dark:border-cyan-800",
@@ -59,7 +59,7 @@ const themeConfig: Record<string, any> = {
 
 function CertificatesPage() {
   const { setActivePage } = useAppContext();
-  
+
   // Data State
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,11 +68,11 @@ function CertificatesPage() {
   // Filter & Pagination State
   const [activeFilter, setActiveFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6; 
+  const itemsPerPage = 6;
 
   useEffect(() => {
     setActivePage(3);
-    
+
     const fetchCertificates = async () => {
       const now = Date.now();
       const cachedData = localStorage.getItem(CACHE_KEY_CERTIFICATES);
@@ -131,7 +131,7 @@ function CertificatesPage() {
 
   const handleFilterChange = (filter: string) => {
     setActiveFilter(filter);
-    setCurrentPage(1); 
+    setCurrentPage(1);
   };
 
   const paginate = (pageNumber: number) => {
@@ -140,16 +140,26 @@ function CertificatesPage() {
   };
 
   // Variants Animation
-  const backdropVariants = {
-    visible: { opacity: 1 },
+  const backdropVariants: Variants = {
     hidden: { opacity: 0 },
+    visible: { opacity: 1 },
   };
 
-  const modalVariants = {
-    hidden: { y: "20px", opacity: 0, scale: 0.95 },
-    visible: { y: "0", opacity: 1, scale: 1, transition: { type: "spring", duration: 0.5 } },
-    exit: { y: "20px", opacity: 0, scale: 0.95 },
+
+  const modalVariants: Variants = {
+    hidden: { y: 20, opacity: 0, scale: 0.95 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      transition: {
+        type: "spring",
+        duration: 0.5,
+      },
+    },
+    exit: { y: 20, opacity: 0, scale: 0.95 },
   };
+
 
   return (
     <section id="certificatesPage" className="page-section active p-8 pt-0">
@@ -170,11 +180,10 @@ function CertificatesPage() {
             <button
               key={cat}
               onClick={() => handleFilterChange(cat)}
-              className={`portfolio-filter px-4 py-2 m-1 rounded-full font-medium transition-all ${
-                activeFilter === cat
-                  ? "bg-white dark:bg-gray-800 bg-opacity-30 text-gray-800 dark:text-white"
-                  : "text-gray-600 dark:text-gray-400"
-              }`}
+              className={`portfolio-filter px-4 py-2 m-1 rounded-full font-medium transition-all ${activeFilter === cat
+                ? "bg-white dark:bg-gray-800 bg-opacity-30 text-gray-800 dark:text-white"
+                : "text-gray-600 dark:text-gray-400"
+                }`}
             >
               {cat === "All" ? "All Certificates" : cat}
             </button>
@@ -183,23 +192,23 @@ function CertificatesPage() {
 
         {/* --- CONTENT GRID --- */}
         {loading ? (
-           <div className="w-full min-h-[50vh] flex flex-col justify-center items-center">
-             <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-           </div>
+          <div className="w-full min-h-[50vh] flex flex-col justify-center items-center">
+            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
               {currentCertificates.length > 0 ? (
                 currentCertificates.map((cert) => {
                   const theme = themeConfig[cert.type] || themeConfig['General'];
-                  
+
                   return (
                     <div key={cert.id} className="certificate-card glassmorphism bg-white dark:bg-white/5 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-white/10 flex flex-col h-full group">
                       {/* Heading Card */}
                       <div className={`h-16 bg-gradient-to-r ${theme.gradient} flex items-center justify-center`}>
                         {theme.icon}
                       </div>
-                      
+
                       <div className="p-6 flex-1 flex flex-col">
                         {/* UPDATE: Menampilkan Type Badge di Card */}
                         <div className="mb-3">
@@ -213,10 +222,10 @@ function CertificatesPage() {
                             {cert.title}
                           </h3>
                         </div>
-                        
+
                         <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 mb-6 font-medium">
-                           <span>{cert.issuer}</span>
-                           <span>{cert.issued_at ? new Date(cert.issued_at).getFullYear() : '-'}</span>
+                          <span>{cert.issuer}</span>
+                          <span>{cert.issued_at ? new Date(cert.issued_at).getFullYear() : '-'}</span>
                         </div>
 
                         <div className="flex justify-end mt-auto">
@@ -317,40 +326,40 @@ function CertificatesPage() {
 
               {/* Modal Body */}
               <div className="p-6 overflow-y-auto">
-                
+
                 {/* Preview Container */}
                 {selectedCert.image ? (
                   selectedCert.image.toLowerCase().includes('.pdf') ? (
                     <div className="w-full h-[500px] bg-gray-100 dark:bg-black/40 rounded-xl overflow-hidden mb-6 border border-gray-200 dark:border-white/10">
-                       <iframe 
-                          src={`${selectedCert.image}#toolbar=0&navpanes=0`} 
-                          className="w-full h-full"
-                          title="Certificate PDF"
-                       />
+                      <iframe
+                        src={`${selectedCert.image}#toolbar=0&navpanes=0`}
+                        className="w-full h-full"
+                        title="Certificate PDF"
+                      />
                     </div>
                   ) : (
                     <div className="w-full relative min-h-[300px] max-h-[500px] bg-gray-100 dark:bg-black/40 rounded-xl overflow-hidden mb-6 border border-gray-200 dark:border-white/10 flex items-center justify-center">
-                       <Image 
-                          src={selectedCert.image} 
-                          alt={selectedCert.title} 
-                          width={800}
-                          height={600}
-                          className="w-full h-auto max-h-[500px] object-contain p-2"
-                       />
+                      <Image
+                        src={selectedCert.image}
+                        alt={selectedCert.title}
+                        width={800}
+                        height={600}
+                        className="w-full h-auto max-h-[500px] object-contain p-2"
+                      />
                     </div>
                   )
                 ) : (
-                   <div className="w-full h-40 bg-gray-100 dark:bg-white/5 rounded-xl flex items-center justify-center text-gray-400 mb-6">
-                      No Document Available
-                   </div>
+                  <div className="w-full h-40 bg-gray-100 dark:bg-white/5 rounded-xl flex items-center justify-center text-gray-400 mb-6">
+                    No Document Available
+                  </div>
                 )}
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-t border-gray-100 dark:border-white/10 pt-4">
-                  
+
                   {/* UPDATE: Info Detail di Modal (Type, Issuer, Date) */}
                   <div className="text-center md:text-left space-y-1">
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                       Type: <span className={`font-bold ${themeConfig[selectedCert.type]?.text}`}>{selectedCert.type}</span>
+                      Type: <span className={`font-bold ${themeConfig[selectedCert.type]?.text}`}>{selectedCert.type}</span>
                     </p>
                     <p className="text-gray-900 dark:text-white font-semibold">
                       Issuer: {selectedCert.issuer}

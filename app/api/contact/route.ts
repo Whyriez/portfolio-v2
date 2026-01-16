@@ -5,28 +5,28 @@ const mailjetApiKey = process.env.MAILJET_API_KEY;
 const mailjetSecretKey = process.env.MAILJET_SECRET_KEY;
 const senderEmail = process.env.NEXT_PUBLIC_EMAIL;
 
-export async function POST(request) {
-  try {
-    const { name, email, subject, message } = await request.json();
+export async function POST(request: Request) {
+    try {
+        const { name, email, subject, message } = await request.json();
 
-    if (!name || !email || !subject || !message) {
-      return NextResponse.json(
-        { success: false, error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+        if (!name || !email || !subject || !message) {
+            return NextResponse.json(
+                { success: false, error: "Missing required fields" },
+                { status: 400 }
+            );
+        }
 
-    const transporter = nodemailer.createTransport({
-      host: "in-v3.mailjet.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: mailjetApiKey,
-        pass: mailjetSecretKey,
-      },
-    });
+        const transporter = nodemailer.createTransport({
+            host: "in-v3.mailjet.com",
+            port: 587,
+            secure: false,
+            auth: {
+                user: mailjetApiKey,
+                pass: mailjetSecretKey,
+            },
+        });
 
-    const emailHtmlContent = `
+        const emailHtmlContent = `
             <!DOCTYPE html>
             <html lang="en">
             <head>
@@ -107,18 +107,17 @@ export async function POST(request) {
                                         <p style="margin-top: 0; margin-bottom: 15px;">You have received a new message from your contact form:</p>
                                         <p><span class="label" style="color: #555555;"><strong>Name:</strong></span> <span class="value" style="font-weight: bold; color: #0056b3;">${name}</span></p>
                                         <p><span class="label" style="color: #555555;"><strong>Email:</strong></span> <span class="value" style="font-weight: bold; color: #0056b3;"><a href="mailto:${email}" style="color: #0056b3; text-decoration: none;">${email}</a></span></p>
-                                        <p><span class="label" style="color: #555555;"><strong>Subject:</strong></span> <span class="value" style="font-weight: bold; color: #0056b3;">${
-                                          subject || "N/A"
-                                        }</span></p>
+                                        <p><span class="label" style="color: #555555;"><strong>Subject:</strong></span> <span class="value" style="font-weight: bold; color: #0056b3;">${subject || "N/A"
+            }</span></p>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td class="content-section" style="padding: 20px;">
                                         <p style="margin-top: 0; margin-bottom: 10px;"><span class="label" style="color: #555555;"><strong>Message:</strong></span></p>
                                         <p style="margin-bottom: 0;">${message.replace(
-                                          /\n/g,
-                                          "<br>"
-                                        )}</p>
+                /\n/g,
+                "<br>"
+            )}</p>
                                     </td>
                                 </tr>
                                 <tr>
@@ -135,28 +134,40 @@ export async function POST(request) {
             </html>
         `;
 
-    await transporter.sendMail({
-      from: `"${name}" <${senderEmail}>`,
-      to: senderEmail,
-      replyTo: email,
-      subject: subject || "New Contact Form Submission",
-      html: emailHtmlContent,
-    });
+        await transporter.sendMail({
+            from: `"${name}" <${senderEmail}>`,
+            to: senderEmail,
+            replyTo: email,
+            subject: subject || "New Contact Form Submission",
+            html: emailHtmlContent,
+        });
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error handling POST request:", error);
-    let errorMessage = "Error sending message.";
-    if (error.code === "EAUTH") {
-      errorMessage =
-        "Authentication failed. Check your Mailjet API Key and Secret Key.";
-    } else if (error.responseCode) {
-      errorMessage = `Mailjet error: ${error.responseCode} - ${error.response}`;
+        return NextResponse.json({ success: true });
+    } catch (error: unknown) {
+        console.error("Error handling POST request:", error);
+
+        let errorMessage = "Error sending message.";
+
+        if (
+            typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            (error as any).code === "EAUTH"
+        ) {
+            errorMessage =
+                "Authentication failed. Check your Mailjet API Key and Secret Key.";
+        } else if (
+            typeof error === "object" &&
+            error !== null &&
+            "responseCode" in error
+        ) {
+            errorMessage = `Mailjet error: ${(error as any).responseCode}`;
+        }
+
+        return NextResponse.json(
+            { success: false, error: errorMessage },
+            { status: 500 }
+        );
     }
 
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
 }
