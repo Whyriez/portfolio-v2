@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AppProvider } from "../context/AppContext";
+import Footer from "../components/Footer";
+import Navigation from "../components/Navigation";
+import Sidebar from "../components/Sidebar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,12 +27,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
-    </html>
+   <html lang="en">
+         <body
+           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+         >
+           <AppProvider>
+             <div className="flex flex-col md:flex-row">
+               <Sidebar />
+   
+               <main className="flex-1 md:ml-80">
+                 <div className="glassmorphism main-content m-4 md:m-8 rounded-3xl p-6 md:p-8">
+                   <Navigation />
+   
+                   {children}
+   
+                   <Footer />
+                 </div>
+               </main>
+             </div>
+           </AppProvider>
+         </body>
+       </html>
   );
 }
