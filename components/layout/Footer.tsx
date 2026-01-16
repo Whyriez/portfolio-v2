@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAppContext } from "../context/AppContext";
+import { useAppContext } from "../../context/AppContext";
 
 function Footer() {
   const { darkMode, toggleDarkMode } = useAppContext();

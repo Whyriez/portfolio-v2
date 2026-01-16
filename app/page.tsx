@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import PortfolioCard from "../components/PortfolioCard";
 import Link from "next/link";
+import PortfolioCard from "@/components/features/portfolio/PortfolioCard";
 
 function HomePage() {
   const [projectData, setProjectData] = useState([]);

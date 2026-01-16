@@ -1,6 +1,6 @@
 'use client';
+import PortfolioCard from "@/components/features/portfolio/PortfolioCard";
 import { useEffect, useState } from "react";
-import PortfolioCard from "../../components/PortfolioCard";
 
 function PortfolioPage() {
   const [activeFilter, setActiveFilter] = useState("all");

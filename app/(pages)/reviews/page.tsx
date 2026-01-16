@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import ReviewCard from "../../components/ReviewsCard";
 import Link from "next/link";
+import ReviewCard from "@/components/features/reviews/ReviewsCard";
 
 function ReviewsPage() {
   const [activeFilter, setActiveFilter] = useState("all");
