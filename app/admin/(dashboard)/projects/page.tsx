@@ -2,6 +2,12 @@ import { createClient } from '@/utils/supabase/server';
 import Link from 'next/link';
 import Image from 'next/image';
 import DeleteProjectButton from './DeleteProjectButton';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: "Projects - Admin",
+};
+
 
 export default async function ProjectsPage() {
   const supabase = await createClient();

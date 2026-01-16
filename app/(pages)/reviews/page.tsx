@@ -5,7 +5,8 @@ import Link from "next/link";
 import ReviewCard from "@/components/features/reviews/ReviewsCard";
 import { useAppContext } from "@/context/AppContext";
 
-// Definisi tema warna untuk kartu review (agar bervariasi)
+
+// --- Konfigurasi Tema ---
 const reviewThemes = [
   { textColor: "text-blue-600", gradient: "from-blue-400 to-blue-600" },
   { textColor: "text-purple-600", gradient: "from-purple-400 to-purple-600" },
@@ -15,10 +16,13 @@ const reviewThemes = [
   { textColor: "text-teal-600", gradient: "from-teal-400 to-teal-600" },
 ];
 
-// URL Default Profile (Trigger untuk menampilkan SVG Avatar di ReviewCard)
 const DEFAULT_PROFILE_URL = "https://supabase1.limapp.my.id/storage/v1/object/public/portfolio//default-profile.jpg";
 
-// Tipe Data Review dari API
+// --- Konfigurasi Cache ---
+const CACHE_KEY_REVIEWS = "reviews_data_cache";
+const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 Jam
+
+// Tipe Data
 interface ReviewData {
   id: string;
   name: string;
@@ -26,7 +30,6 @@ interface ReviewData {
   review: string;
 }
 
-// Tipe Data untuk State (sudah dimapping ke props ReviewCard)
 interface FormattedReview {
   nama: string;
   profile: string;
@@ -44,26 +47,50 @@ function ReviewsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [reviewsPerPage] = useState(6);
 
-  // 1. Fetch Data dari API
+  // --- Helper: Format Data ---
+  const formatReviews = (data: ReviewData[]): FormattedReview[] => {
+    return data.map(item => ({
+      nama: item.name,
+      profile: item.avatar || DEFAULT_PROFILE_URL,
+      review: item.review
+    }));
+  };
+
+  // 1. Fetch Data (Cache + API)
   useEffect(() => {
-    setActivePage(3); // Set sidebar active ke Reviews (Index 3)
+    setActivePage(3);
 
     const fetchReviews = async () => {
+      const now = Date.now();
+      const cachedData = localStorage.getItem(CACHE_KEY_REVIEWS);
+
+      // --- A. CEK CACHE ---
+      if (cachedData) {
+        const { data, timestamp } = JSON.parse(cachedData);
+        
+        // Jika cache valid
+        if (now - timestamp < CACHE_EXPIRY_MS) {
+          setReviewData(formatReviews(data));
+          setLoading(false);
+          return; // Stop, pakai cache
+        }
+      }
+
+      // --- B. FETCH API FRESH ---
       try {
         const res = await fetch('/api/reviews');
         if (!res.ok) throw new Error('Failed to fetch reviews');
         
         const data: ReviewData[] = await res.json();
 
-        // Map data API (name, avatar) ke props component (nama, profile)
-        const formatted = data.map(item => ({
-          nama: item.name,
-          // Jika avatar null, gunakan default URL agar render SVG
-          profile: item.avatar || DEFAULT_PROFILE_URL,
-          review: item.review
+        setReviewData(formatReviews(data));
+
+        // Simpan Data Mentah ke Cache
+        localStorage.setItem(CACHE_KEY_REVIEWS, JSON.stringify({
+          data: data,
+          timestamp: now
         }));
 
-        setReviewData(formatted);
       } catch (error) {
         console.error("Error loading reviews:", error);
       } finally {
@@ -80,7 +107,6 @@ function ReviewsPage() {
   const indexOfFirstReview = indexOfLastReview - reviewsPerPage;
   const currentReviews = reviewData.slice(indexOfFirstReview, indexOfLastReview);
 
-  // Fungsi ganti halaman & scroll ke atas
   const paginate = (pageNumber: number) => {
     setCurrentPage(pageNumber);
     document.getElementById('reviewsPage')?.scrollIntoView({ behavior: 'smooth' });
@@ -98,10 +124,10 @@ function ReviewsPage() {
         {["all"].map((filter) => (
           <button
             key={filter}
-            className={`review-filter px-4 py-2 m-1 rounded-full font-medium ${
+            className={`review-filter px-4 py-2 m-1 rounded-full font-medium transition-all ${
               activeFilter === filter
-                ? "bg-white dark:bg-gray-800 bg-opacity-30 text-gray-800 dark:text-white"
-                : "text-gray-600 dark:text-gray-400"
+                ? "bg-white dark:bg-gray-800 bg-opacity-30 text-gray-800 dark:text-white shadow-sm"
+                : "text-gray-600 dark:text-gray-400 hover:bg-white/10"
             }`}
             onClick={() => setActiveFilter(filter)}
           >
@@ -112,15 +138,15 @@ function ReviewsPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex justify-center p-20">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        // Loading State (Center Fix)
+        <div className="w-full min-h-[50vh] flex flex-col justify-center items-center">
+           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {currentReviews.length > 0 ? (
               currentReviews.map((review, idx) => {
-                // Pilih tema berdasarkan index agar warna-warni
                 const theme = reviewThemes[idx % reviewThemes.length];
                 return (
                   <ReviewCard
@@ -147,7 +173,9 @@ function ReviewsPage() {
                 <button
                   key={index}
                   className={`pagination-dot w-3 h-3 rounded-full transition-all ${
-                    currentPage === index + 1 ? "bg-blue-600 scale-125" : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400"
+                    currentPage === index + 1 
+                      ? "bg-blue-600 scale-125" 
+                      : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400"
                   }`}
                   onClick={() => paginate(index + 1)}
                 ></button>

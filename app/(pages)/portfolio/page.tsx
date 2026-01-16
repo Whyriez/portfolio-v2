@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import PortfolioCard from "@/components/features/portfolio/PortfolioCard";
 import { useAppContext } from "@/context/AppContext";
 
+
 // Tipe data Project
 interface Project {
   id: string;
@@ -15,6 +16,10 @@ interface Project {
   link: string;
   github: string;
 }
+
+// --- Config Cache ---
+const CACHE_KEY_PORTFOLIO = "portfolio_data_cache";
+const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 Jam
 
 function PortfolioPage() {
   const { setActivePage } = useAppContext();
@@ -29,11 +34,32 @@ function PortfolioPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; 
 
-  // 1. Fetch Data API
+  // 1. Fetch Data API with Cache
   useEffect(() => {
     setActivePage(2); 
 
     const fetchProjects = async () => {
+      const now = Date.now();
+      const cachedData = localStorage.getItem(CACHE_KEY_PORTFOLIO);
+
+      // --- A. CEK CACHE ---
+      if (cachedData) {
+        const { data, timestamp } = JSON.parse(cachedData);
+        
+        // Jika cache masih valid
+        if (now - timestamp < CACHE_EXPIRY_MS) {
+          setProjectData(data);
+          
+          // Generate categories dari data cache
+          const uniqueCategories = Array.from(new Set(data.map((item: Project) => item.category))) as string[];
+          setCategories(uniqueCategories);
+          
+          setLoading(false);
+          return; // Stop, tidak perlu fetch API
+        }
+      }
+
+      // --- B. FETCH FRESH API ---
       try {
         const res = await fetch('/api/projects');
         if (!res.ok) throw new Error('Failed to fetch');
@@ -41,9 +67,15 @@ function PortfolioPage() {
         
         setProjectData(data);
         
-        // Auto-generate categories dari DB
+        // Generate categories
         const uniqueCategories = Array.from(new Set(data.map((item: Project) => item.category))) as string[];
         setCategories(uniqueCategories);
+
+        // Simpan ke Cache
+        localStorage.setItem(CACHE_KEY_PORTFOLIO, JSON.stringify({
+          data: data,
+          timestamp: now
+        }));
 
       } catch (error) {
         console.error("Error:", error);
@@ -73,18 +105,17 @@ function PortfolioPage() {
 
   return (
     <section id="portfolioPage" className="page-section active p-8 pt-0">
-      {/* Header Original Anda */}
-      <h2 className="text-4xl font-bold text-gray-800 mb-8">My Portfolio</h2>
+      <h2 className="text-4xl font-bold text-gray-800 dark:text-white mb-8">My Portfolio</h2>
 
-      {/* Filter Buttons (Style Original Anda) */}
+      {/* Filter Buttons */}
       <div className="flex flex-wrap justify-center mb-8">
         {["all", ...categories].map((filter) => (
           <button
             key={filter}
-            className={`portfolio-filter px-4 py-2 m-1 rounded-full font-medium ${
+            className={`portfolio-filter px-4 py-2 m-1 rounded-full font-medium transition-all duration-300 ${
               activeFilter === filter
-                ? "bg-white dark:bg-gray-800 bg-opacity-30 text-gray-800 dark:text-white"
-                : "text-gray-600 dark:text-gray-400"
+                ? "bg-white dark:bg-gray-800 bg-opacity-30 text-gray-800 dark:text-white shadow-md"
+                : "text-gray-600 dark:text-gray-400 hover:bg-white/10"
             }`}
             onClick={() => {
               setActiveFilter(filter);
@@ -98,8 +129,9 @@ function PortfolioPage() {
 
       {/* Content Area */}
       {loading ? (
-        <div className="flex justify-center p-20">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        // Loading State (Center Fix)
+        <div className="w-full min-h-[50vh] flex flex-col justify-center items-center">
+           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : (
         <>
@@ -126,7 +158,7 @@ function PortfolioPage() {
               <button
                 onClick={() => paginate(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-4 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-600 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
               >
                 ← Prev
               </button>
@@ -135,10 +167,10 @@ function PortfolioPage() {
                 <button
                   key={number}
                   onClick={() => paginate(number)}
-                  className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                  className={`w-10 h-10 rounded-lg font-medium transition-all duration-300 ${
                     currentPage === number
-                      ? "bg-blue-600 text-white"
-                      : "bg-white dark:bg-white/5 text-gray-600"
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                      : "bg-white dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10"
                   }`}
                 >
                   {number}
@@ -148,7 +180,7 @@ function PortfolioPage() {
               <button
                 onClick={() => paginate(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-600 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
               >
                 Next →
               </button>

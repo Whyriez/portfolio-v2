@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client'; // Import client utility
 
+
 export default function AdminLogin() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);

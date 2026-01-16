@@ -16,11 +16,17 @@ interface Certificate {
   type: 'Competence' | 'Achievement' | 'General';
 }
 
+// --- Config Cache ---
+const CACHE_KEY_CERTIFICATES = "certificates_data_cache";
+const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 Jam
+
 // Konfigurasi Tema
 const themeConfig: Record<string, any> = {
   Competence: {
     gradient: "from-blue-600 to-indigo-600",
     text: "text-blue-600",
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    border: "border-blue-200 dark:border-blue-800",
     icon: (
       <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -30,6 +36,8 @@ const themeConfig: Record<string, any> = {
   Achievement: {
     gradient: "from-purple-500 to-pink-600",
     text: "text-purple-600",
+    bg: "bg-purple-50 dark:bg-purple-900/20",
+    border: "border-purple-200 dark:border-purple-800",
     icon: (
       <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -39,6 +47,8 @@ const themeConfig: Record<string, any> = {
   General: {
     gradient: "from-cyan-400 to-sky-500", 
     text: "text-cyan-600",
+    bg: "bg-cyan-50 dark:bg-cyan-900/20",
+    border: "border-cyan-200 dark:border-cyan-800",
     icon: (
       <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -62,18 +72,41 @@ function CertificatesPage() {
 
   useEffect(() => {
     setActivePage(3);
+    
     const fetchCertificates = async () => {
+      const now = Date.now();
+      const cachedData = localStorage.getItem(CACHE_KEY_CERTIFICATES);
+
+      // --- A. CEK CACHE ---
+      if (cachedData) {
+        const { data, timestamp } = JSON.parse(cachedData);
+        if (now - timestamp < CACHE_EXPIRY_MS) {
+          setCertificates(data);
+          setLoading(false);
+          return; // Stop, pakai cache
+        }
+      }
+
+      // --- B. FETCH FRESH API ---
       try {
         const res = await fetch('/api/certificates');
         if (!res.ok) throw new Error('Failed fetch');
         const data = await res.json();
         setCertificates(data);
+
+        // Simpan Cache
+        localStorage.setItem(CACHE_KEY_CERTIFICATES, JSON.stringify({
+          data: data,
+          timestamp: now
+        }));
+
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchCertificates();
   }, [setActivePage]);
 
@@ -131,7 +164,7 @@ function CertificatesPage() {
           </p>
         </header>
 
-        {/* --- FILTER BUTTONS (Updated Style to Match Portfolio) --- */}
+        {/* --- FILTER BUTTONS --- */}
         <div className="flex flex-wrap justify-center mb-8">
           {["All", "Competence", "Achievement", "General"].map((cat) => (
             <button
@@ -150,7 +183,7 @@ function CertificatesPage() {
 
         {/* --- CONTENT GRID --- */}
         {loading ? (
-           <div className="flex justify-center p-20">
+           <div className="w-full min-h-[50vh] flex flex-col justify-center items-center">
              <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
            </div>
         ) : (
@@ -168,21 +201,25 @@ function CertificatesPage() {
                       </div>
                       
                       <div className="p-6 flex-1 flex flex-col">
+                        {/* UPDATE: Menampilkan Type Badge di Card */}
+                        <div className="mb-3">
+                          <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md border ${theme.text} ${theme.bg} ${theme.border}`}>
+                            {cert.type}
+                          </span>
+                        </div>
+
                         <div className="flex justify-between items-start mb-4">
                           <h3 className="text-lg font-bold text-gray-800 dark:text-white line-clamp-2 min-h-[3.5rem]" title={cert.title}>
                             {cert.title}
                           </h3>
-                          <span className={`text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300`}>
-                            {cert.issued_at ? new Date(cert.issued_at).getFullYear() : '-'}
-                          </span>
                         </div>
                         
-                        <p className="text-gray-600 dark:text-gray-400 font-medium mb-6 text-sm flex-1">
-                          Issuer: {cert.issuer}
-                        </p>
+                        <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 mb-6 font-medium">
+                           <span>{cert.issuer}</span>
+                           <span>{cert.issued_at ? new Date(cert.issued_at).getFullYear() : '-'}</span>
+                        </div>
 
                         <div className="flex justify-end mt-auto">
-                          {/* Button View Certificate */}
                           <button
                             className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 text-sm w-full justify-center text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 bg-gradient-to-r ${theme.gradient}`}
                             onClick={() => setSelectedCert(cert)}
@@ -191,7 +228,7 @@ function CertificatesPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
-                            View Certificate
+                            View Details
                           </button>
                         </div>
                       </div>
@@ -214,11 +251,10 @@ function CertificatesPage() {
                 <button
                   onClick={() => paginate(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
+                  className="px-4 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
                 >
                   ← Prev
                 </button>
-
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
                   <button
                     key={number}
@@ -232,11 +268,10 @@ function CertificatesPage() {
                     {number}
                   </button>
                 ))}
-
                 <button
                   onClick={() => paginate(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="px-4 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
+                  className="px-4 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
                 >
                   Next →
                 </button>
@@ -286,7 +321,6 @@ function CertificatesPage() {
                 {/* Preview Container */}
                 {selectedCert.image ? (
                   selectedCert.image.toLowerCase().includes('.pdf') ? (
-                    // TAMPILAN PDF: Fixed Height
                     <div className="w-full h-[500px] bg-gray-100 dark:bg-black/40 rounded-xl overflow-hidden mb-6 border border-gray-200 dark:border-white/10">
                        <iframe 
                           src={`${selectedCert.image}#toolbar=0&navpanes=0`} 
@@ -295,7 +329,6 @@ function CertificatesPage() {
                        />
                     </div>
                   ) : (
-                    // TAMPILAN IMAGE: Proporsional
                     <div className="w-full relative min-h-[300px] max-h-[500px] bg-gray-100 dark:bg-black/40 rounded-xl overflow-hidden mb-6 border border-gray-200 dark:border-white/10 flex items-center justify-center">
                        <Image 
                           src={selectedCert.image} 
@@ -313,7 +346,12 @@ function CertificatesPage() {
                 )}
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-t border-gray-100 dark:border-white/10 pt-4">
-                  <div className="text-center md:text-left">
+                  
+                  {/* UPDATE: Info Detail di Modal (Type, Issuer, Date) */}
+                  <div className="text-center md:text-left space-y-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                       Type: <span className={`font-bold ${themeConfig[selectedCert.type]?.text}`}>{selectedCert.type}</span>
+                    </p>
                     <p className="text-gray-900 dark:text-white font-semibold">
                       Issuer: {selectedCert.issuer}
                     </p>
@@ -324,14 +362,16 @@ function CertificatesPage() {
 
                   {/* Action Buttons */}
                   <div className="flex gap-3">
+                    {/* UPDATE: Tombol Link/Verify */}
                     {selectedCert.link && (
                       <a
                         href={selectedCert.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-4 py-2 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                        className="px-4 py-2 bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-white/20 transition-colors flex items-center gap-2"
                       >
-                        Verify 🔗
+                        <span>Verify Credential</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                       </a>
                     )}
 

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useAppContext } from "@/context/AppContext";
 
+
 // --- Types ---
 interface Journey {
   id: string;
