@@ -1,186 +1,212 @@
-function AboutPage() {
-  return (
-    <section id="aboutPage" className="page-section active">
-      <div className="mb-8">
-        <h2 className="text-4xl font-bold text-gray-800 mb-6">About me</h2>
-        <p className="text-gray-600 leading-relaxed mb-6">
-          A dedicated Mobile Developer & Backend Engineer with 4+ years of
-          experience delivering high-quality mobile applications and scalable
-          backend solutions. My skills encompass both front-end mobile
-          development and server-side programming using Node.js and ASP.NET
-          Core, focused on building efficient and impactful digital products.
-        </p>
-        <p className="text-gray-600 leading-relaxed mb-6">
-          I believe in creating clean, efficient code that delivers exceptional
-          user experiences. My approach combines technical expertise with a keen
-          eye for functionality and performance, ensuring every project I work
-          on is both robust and user-centric.
-        </p>
+'use client';
 
+import React, { useEffect, useState } from "react";
+import { useAppContext } from "@/context/AppContext";
+
+// --- Types ---
+interface Journey {
+  id: string;
+  title: string;
+  company: string;
+  period: string;
+  description: string;
+}
+
+interface Skill {
+  id: string;
+  name: string;
+  level: string;
+  description: string;
+}
+
+// --- Config Cache ---
+const CACHE_KEY_ABOUT = "about_page_data";
+const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 Jam
+
+// --- Helper Colors ---
+const COLORS = [
+  { text: "text-purple-600", border: "border-purple-500" },
+  { text: "text-blue-600", border: "border-blue-500" },
+  { text: "text-green-600", border: "border-green-500" },
+  { text: "text-pink-600", border: "border-pink-500" },
+];
+
+export default function AboutPage() {
+  const { setActivePage } = useAppContext();
+  
+  const [aboutText, setAboutText] = useState("");
+  const [journeys, setJourneys] = useState<Journey[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setActivePage(1);
+
+    const fetchAboutData = async () => {
+      const now = Date.now();
+      const cachedData = localStorage.getItem(CACHE_KEY_ABOUT);
+
+      // --- 1. CEK CACHE ---
+      if (cachedData) {
+        const { profile, journeys, skills, timestamp } = JSON.parse(cachedData);
+        
+        // Jika cache belum expired (masih valid)
+        if (now - timestamp < CACHE_EXPIRY_MS) {
+          if (profile) setAboutText(profile.about_me || "No description available.");
+          if (journeys) setJourneys(journeys);
+          if (skills) setSkills(skills);
+          
+          setLoading(false); 
+          return; // Stop di sini, tidak perlu fetch API
+        }
+      }
+
+      // --- 2. FETCH API FRESH (Jika Cache Kosong/Expired) ---
+      try {
+        const [profileRes, journeyRes, skillRes] = await Promise.all([
+          fetch('/api/profile'),
+          fetch('/api/journeys'),
+          fetch('/api/skills')
+        ]);
+
+        let profileData = {};
+        let journeyData = [];
+        let skillData = [];
+
+        if (profileRes.ok) {
+          profileData = await profileRes.json();
+          // @ts-ignore
+          setAboutText(profileData.about_me || "No description available.");
+        }
+
+        if (journeyRes.ok) {
+          journeyData = await journeyRes.json();
+          setJourneys(journeyData);
+        }
+
+        if (skillRes.ok) {
+          skillData = await skillRes.json();
+          setSkills(skillData);
+        }
+
+        // --- 3. SIMPAN KE CACHE ---
+        localStorage.setItem(CACHE_KEY_ABOUT, JSON.stringify({
+          profile: profileData,
+          journeys: journeyData,
+          skills: skillData,
+          timestamp: now
+        }));
+
+      } catch (error) {
+        console.error("Error fetching about data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAboutData();
+  }, [setActivePage]);
+
+  // Fallback Loading UI (Center Fix)
+  if (loading) {
+    return (
+      <section id="aboutPage" className="page-section active">
+        {/* Wrapper Flexbox Center */}
+        <div className="w-full min-h-[80vh] flex flex-col justify-center items-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-400 text-sm animate-pulse">Loading profile...</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section id="aboutPage" className="page-section active p-8 pt-0">
+      <div className="mb-8">
+        <h2 className="text-4xl font-bold text-gray-800 dark:text-white mb-6">About me</h2>
+        
+        {/* About Me Text */}
+        <div className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6 whitespace-pre-line">
+          {aboutText}
+        </div>
+
+        {/* --- JOURNEY SECTION --- */}
         <div className="mt-12 mb-12">
-          <h3 className="text-2xl font-semibold text-gray-800 mb-8">
+          <h3 className="text-2xl font-semibold text-gray-800 dark:text-white mb-8">
             My Journey
           </h3>
+          
           <div className="relative">
             <div className="absolute left-0 md:left-1/2 transform md:-translate-x-1/2 h-full w-1 bg-gradient-to-b from-blue-400 to-purple-600 rounded-full"></div>
 
             <div className="relative z-10">
-              <div className="flex flex-col md:flex-row mb-12">
-                <div className="md:w-1/2 md:pr-12 md:text-right mb-4 md:mb-0">
-                  <div className="glassmorphism rounded-xl p-5 md:ml-auto md:mr-0 max-w-md">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-1">
-                      Mobile Programmer (PT Amanah Karya Indonesia)
-                    </h4>
-                    <p className="text-purple-600 font-medium mb-2">
-                      November 2024 (1 Month)
-                    </p>
-                    <p className="text-gray-600 text-sm">
-                      Contributed as a Mobile Developer to the Berbagi.link
-                      application, focusing on system administration and
-                      management. Developed key features including{" "}
-                      <strong>
-                        sales (transaction management, analysis, voucher
-                        generation), settings (store page, promotion banners,
-                        bank integration), marketing (transaction analysis,
-                        reseller management), and product management
-                        (categories, listings)
-                      </strong>
-                      . Utilized <strong>Kotlin and MVVM architecture</strong>{" "}
-                      for modular and scalable code. Collaborated with backend
-                      and product teams to align features with business needs
-                      and ensure an optimal admin user experience.
-                    </p>
-                  </div>
-                </div>
-                <div className="md:w-1/2 md:pl-12 flex justify-start md:justify-start">
-                  <div className="w-8 h-8 rounded-full bg-white border-4 border-purple-500 z-10 mt-1 md:ml-[-1.65rem]"></div>
-                </div>
-              </div>
+              {journeys.length === 0 ? (
+                 <p className="text-center text-gray-500 py-4 pl-4 md:pl-0">No journey added yet.</p>
+              ) : (
+                journeys.map((item, index) => {
+                  const isEven = index % 2 === 0;
+                  const color = COLORS[index % COLORS.length];
 
-              <div className="flex flex-col md:flex-row-reverse mb-12">
-                <div className="md:w-1/2 md:pl-12 mb-4 md:mb-0">
-                  <div className="glassmorphism rounded-xl p-5 md:mr-auto md:ml-0 max-w-md">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-1">
-                      Android Developer Student (Bangkit Academy)
-                    </h4>
-                    <p className="text-blue-600 font-medium mb-2">
-                      September - Desember 2024 (4 Month)
-                    </p>
-                    <p className="text-gray-600 text-sm">
-                      Participated in the Bangkit Academy program under the
-                      Android Development Learning Path, gaining in-depth
-                      knowledge and practical skills in building robust and
-                      scalable Android applications.
-                    </p>
-                  </div>
-                </div>
-                <div className="md:w-1/2 md:pr-12 flex justify-start md:justify-end">
-                  <div className="w-8 h-8 rounded-full bg-white border-4 border-blue-500 z-10 mt-1 md:mr-[-1.65rem]"></div>
-                </div>
-              </div>
+                  return (
+                    <div key={item.id} className={`flex flex-col ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'} mb-12`}>
+                      
+                      {/* Content Box */}
+                      <div className={`md:w-1/2 ${isEven ? 'md:pr-12 md:text-right' : 'md:pl-12'} mb-4 md:mb-0`}>
+                        <div className={`glassmorphism bg-white dark:bg-white/5 rounded-xl p-5 border border-gray-100 dark:border-white/10 ${isEven ? 'md:ml-auto md:mr-0' : 'md:mr-auto md:ml-0'} max-w-md`}>
+                          <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">
+                            {item.title}
+                          </h4>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 mb-1 font-medium">
+                             {item.company}
+                          </div>
+                          <p className={`${color.text} font-medium mb-2 text-sm`}>
+                            {item.period}
+                          </p>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                            {item.description}
+                          </p>
+                        </div>
+                      </div>
 
-              <div className="flex flex-col md:flex-row">
-                <div className="md:w-1/2 md:pr-12 md:text-right mb-4 md:mb-0">
-                  <div className="glassmorphism rounded-xl p-5 md:ml-auto md:mr-0 max-w-md">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-1">
-                      Web Programmer (Gamma Adversite)
-                    </h4>
-                    <p className="text-green-600 font-medium mb-2">
-                      2021 (3 Months)
-                    </p>
-                    <p className="text-gray-600 text-sm">
-                      Contributed to web development projects, implementing
-                      client-side functionalities and integrating with existing
-                      backend systems.
-                    </p>
-                  </div>
-                </div>
-                <div className="md:w-1/2 md:pl-12 flex justify-start md:justify-start">
-                  <div className="w-8 h-8 rounded-full bg-white border-4 border-green-500 z-10 mt-1 md:ml-[-1.65rem]"></div>
-                </div>
-              </div>
+                      {/* Dot Timeline */}
+                      <div className={`md:w-1/2 ${isEven ? 'md:pl-12 justify-start' : 'md:pr-12 justify-end'} flex`}>
+                        <div className={`w-8 h-8 rounded-full bg-white dark:bg-gray-800 border-4 ${color.border} z-10 mt-1 ${isEven ? 'md:ml-[-1.65rem]' : 'md:mr-[-1.65rem]'}`}></div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
 
+        {/* --- SKILLS SECTION --- */}
         <div className="mt-12">
-          <h3 className="text-2xl font-semibold text-gray-800 mb-6">
+          <h3 className="text-2xl font-semibold text-gray-800 dark:text-white mb-6">
             My Skills
           </h3>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="glassmorphism rounded-xl p-5">
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-700 font-medium">HTML/CSS</span>
-                <span className="text-purple-600 font-medium">
-                  Functional Basics
-                </span>
-              </div>
-              <div className="text-gray-600 text-sm">
-                Have a <strong>basic understanding of HTML and CSS</strong> for
-                content structure and organization, support collaboration in
-                user interface development.
-              </div>
-            </div>
-            <div className="glassmorphism rounded-xl p-5">
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-700 font-medium">JavaScript</span>
-                <span className="text-purple-600 font-medium">Proficient</span>
-              </div>
-              <div className="text-gray-600 text-sm">
-                Solid command of <strong>JavaScript</strong> for dynamic web
-                interactions and integrating with backend services.
-              </div>
-            </div>
-            <div className="glassmorphism rounded-xl p-5">
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-700 font-medium">React</span>
-                <span className="text-purple-600 font-medium">
-                  Able to Implement
-                </span>
-              </div>
-              <div className="text-gray-600 text-sm">
-                Capable of <strong>implementing basic React components</strong>{" "}
-                and understanding its core concepts for frontend development.
-              </div>
-            </div>
-            <div className="glassmorphism rounded-xl p-5">
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-700 font-medium">Node.js</span>
-                <span className="text-purple-600 font-medium">Proficient</span>
-              </div>
-              <div className="text-gray-600 text-sm">
-                Proficient in building{" "}
-                <strong>scalable backend applications</strong> and APIs using{" "}
-                <strong>Node.js</strong>.
-              </div>
-            </div>
-            <div className="glassmorphism rounded-xl p-5">
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-700 font-medium">UI/UX Design</span>
-                <span className="text-purple-600 font-medium">Familiar</span>
-              </div>
-              <div className="text-gray-600 text-sm">
-                Familiar with <strong>UI/UX principles</strong>, enabling
-                effective collaboration with designers and understanding
-                user-centered approaches.
-              </div>
-            </div>
-            <div className="glassmorphism rounded-xl p-5">
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-700 font-medium">Kotlin</span>
-                <span className="text-purple-600 font-medium">Expert</span>
-              </div>
-              <div className="text-gray-600 text-sm">
-                <strong>Expert-level proficiency in Kotlin</strong> for building
-                robust, high-performance mobile applications with clean
-                architecture.
-              </div>
-            </div>
+            {skills.length > 0 ? (
+              skills.map((skill, index) => (
+                <div key={skill.id} className="glassmorphism bg-white dark:bg-white/5 rounded-xl p-5 border border-gray-100 dark:border-white/10 hover:shadow-lg transition-shadow">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-gray-700 dark:text-gray-200 font-medium">{skill.name}</span>
+                    <span className={`font-medium ${COLORS[index % COLORS.length].text}`}>
+                      {skill.level}
+                    </span>
+                  </div>
+                  <div className="text-gray-600 dark:text-gray-400 text-sm">
+                    {skill.description}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 col-span-2">No skills added yet.</p>
+            )}
           </div>
         </div>
       </div>
     </section>
   );
 }
-
-export default AboutPage;

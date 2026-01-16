@@ -3,20 +3,42 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { createClient } from '@/utils/supabase/client'; // Import client utility
 
 export default function AdminLogin() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null); // State untuk error
+  const supabase = createClient(); // Inisialisasi Supabase Client
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMsg(null);
 
-    // Simulasi login sementara (nanti kita ganti dengan logic asli)
-    setTimeout(() => {
-      setIsLoading(false);
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // Login sukses, refresh router agar middleware mendeteksi cookie baru
+      router.refresh(); 
       router.push('/admin');
-    }, 1500);
+      
+    } catch (error: any) {
+      setErrorMsg(error.message || "Gagal login. Periksa email dan password.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -43,6 +65,13 @@ export default function AdminLogin() {
             </p>
           </div>
 
+          {/* Error Message Alert */}
+          {errorMsg && (
+            <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm text-center font-medium animate-pulse">
+              {errorMsg}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -52,6 +81,7 @@ export default function AdminLogin() {
               <div className="relative">
                 <span className="absolute left-4 top-3.5 text-gray-400">📧</span>
                 <input
+                  name="email" 
                   type="email"
                   placeholder="admin@example.com"
                   className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-gray-800 dark:text-white placeholder-gray-400"
@@ -67,6 +97,7 @@ export default function AdminLogin() {
               <div className="relative">
                 <span className="absolute left-4 top-3.5 text-gray-400">🔒</span>
                 <input
+                  name="password"
                   type="password"
                   placeholder="••••••••"
                   className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-gray-800 dark:text-white placeholder-gray-400"
