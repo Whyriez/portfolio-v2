@@ -227,6 +227,7 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
                         <select required value={category} onChange={(e) => setCategory(e.target.value)}
                           className="w-full p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 outline-none focus:border-blue-500 appearance-none cursor-pointer">
                           <option value="Mobile App">Mobile App</option>
+                          <option value="Desktop App">Desktop App</option>
                           <option value="Web App">Web App</option>
                           <option value="UI/UX Design">UI/UX Design</option>
                           <option value="Backend System">Backend System</option>

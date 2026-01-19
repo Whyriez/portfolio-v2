@@ -1,91 +1,112 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 
+// --- Toast Component ---
+const Toast = ({ show, message, type }: { show: boolean, message: string, type: 'success' | 'error' }) => {
+  if (!show) return null;
+  return (
+    <div className={`fixed bottom-8 right-8 z-50 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 text-white animate-bounce-in ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+      <span>{type === 'success' ? '✅' : '⚠️'}</span>
+      <span className="font-medium">{message}</span>
+    </div>
+  );
+};
+
 export default function CreateCertificatePage() {
   const router = useRouter();
   const supabase = createClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // States
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' as 'success' | 'error' });
+
+  // Form Fields
   const [title, setTitle] = useState('');
   const [issuer, setIssuer] = useState('');
   const [issuedAt, setIssuedAt] = useState('');
   const [link, setLink] = useState('');
-
   const [type, setType] = useState('Competence');
 
   // File State
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [fileType, setFileType] = useState<'image' | 'pdf' | null>(null);
-  const [isDragging, setIsDragging] = useState(false); // State untuk visual drag
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Function helper untuk memproses file (dipakai di onChange dan onDrop)
+  // Helper: Toast
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
+
+  // Helper: Process File
   const processFile = (selectedFile: File) => {
-    // Validasi tipe file manual jika dari drag-drop
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
     if (!validTypes.includes(selectedFile.type)) {
-      alert('File type not supported. Please upload Image or PDF.');
+      showToast('File type not supported. Please upload Image or PDF.', 'error');
       return;
+    }
+
+    if (selectedFile.size > 5 * 1024 * 1024) { // 5MB limit
+        showToast('File size too large (Max 5MB).', 'error');
+        return;
     }
 
     setFile(selectedFile);
     setPreviewUrl(URL.createObjectURL(selectedFile));
-
-    if (selectedFile.type === 'application/pdf') {
-      setFileType('pdf');
-    } else {
-      setFileType('image');
-    }
+    setFileType(selectedFile.type === 'application/pdf' ? 'pdf' : 'image');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      processFile(e.target.files[0]);
-    }
+    if (e.target.files?.[0]) processFile(e.target.files[0]);
   };
 
-  // --- Drag & Drop Handlers ---
+  // Drag & Drop Handlers
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
   };
-
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
   };
-
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processFile(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]);
   };
-  // -----------------------------
 
+  // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!file) {
+        showToast('Please upload a certificate file.', 'error');
+        return;
+    }
+
     setLoading(true);
 
     try {
       let fileUrl = '';
 
-      if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `certificates/${Date.now()}.${fileExt}`;
-        const { error: upErr } = await supabase.storage.from('portfolio').upload(fileName, file);
-        if (upErr) throw upErr;
-        const { data } = supabase.storage.from('portfolio').getPublicUrl(fileName);
-        fileUrl = data.publicUrl;
-      }
+      // Upload File
+      const fileExt = file.name.split('.').pop();
+      const fileName = `certificates/${Date.now()}.${fileExt}`;
+      const { error: upErr } = await supabase.storage.from('portfolio').upload(fileName, file);
+      
+      if (upErr) throw upErr;
+      
+      const { data } = supabase.storage.from('portfolio').getPublicUrl(fileName);
+      fileUrl = data.publicUrl;
 
+      // Save Data
       const res = await fetch('/api/certificates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,122 +116,175 @@ export default function CreateCertificatePage() {
           issued_at: issuedAt,
           link,
           image: fileUrl,
-          type // <--- Kirim Type ke API
+          type
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to create');
-      router.push('/admin/certificates');
-      router.refresh();
+      if (!res.ok) throw new Error('Failed to save certificate');
+
+      showToast('Certificate added successfully!', 'success');
+      setTimeout(() => {
+          router.push('/admin/certificates');
+          router.refresh();
+      }, 1500);
 
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      showToast(error.message, 'error');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <div className="mb-8 flex items-center gap-4">
-        <Link href="/admin/certificates" className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg">←</Link>
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Add Certificate</h1>
+    <div className="max-w-4xl mx-auto p-6 md:p-8 pb-20">
+      
+      {/* --- HEADER --- */}
+      <div className="flex items-center gap-4 mb-8">
+        <Link 
+          href="/admin/certificates"
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 hover:scale-105 transition-transform shadow-sm"
+        >
+          ←
+        </Link>
+        <div>
+           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Add New Certificate</h1>
+           <p className="text-sm text-gray-500 dark:text-gray-400">Upload your achievement proof.</p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* File Upload Area dengan Drag & Drop */}
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-6 cursor-pointer relative transition-all duration-300
-            ${isDragging
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.02]'
-              : 'border-gray-300 dark:border-white/20 hover:bg-gray-50 dark:hover:bg-white/5'
-            }`}
-        >
-          {previewUrl ? (
-            <div className="relative w-full h-48 flex items-center justify-center bg-gray-50 dark:bg-white/5 rounded-lg">
-              {fileType === 'pdf' ? (
-                <div className="text-center text-red-500">
-                  <span className="text-5xl block mb-2">📄</span>
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300">PDF Selected</span>
-                  <p className="text-xs text-gray-400 mt-1">{file?.name}</p>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
+        
+        {/* LEFT: File Upload (1/3) */}
+        <div className="lg:col-span-1">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm h-full">
+                <h2 className="text-sm font-bold text-gray-800 dark:text-white mb-4 uppercase tracking-wider flex items-center gap-2">
+                    <span>📄</span> Document
+                </h2>
+                
+                <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 cursor-pointer relative transition-all duration-300 aspect-[3/4]
+                    ${isDragging
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.02]'
+                        : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-white/5'
+                    }`}
+                >
+                    {previewUrl ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center relative">
+                            {fileType === 'pdf' ? (
+                                <div className="text-center text-red-500 animate-pop-in">
+                                    <span className="text-6xl block mb-3">📄</span>
+                                    <span className="text-sm font-bold bg-red-100 text-red-600 px-3 py-1 rounded-full">PDF File</span>
+                                    <p className="text-xs text-gray-500 mt-2 px-2 break-all line-clamp-2">{file?.name}</p>
+                                </div>
+                            ) : (
+                                <Image src={previewUrl} alt="Preview" fill className="object-contain rounded-lg p-2" />
+                            )}
+                            
+                            {/* Hover Overlay */}
+                            <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 flex items-center justify-center text-white font-bold rounded-lg transition-opacity backdrop-blur-sm">
+                                <span>↻ Change File</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center text-gray-400">
+                            <span className={`text-5xl block mb-4 transition-transform ${isDragging ? 'scale-110 text-blue-500' : ''}`}>
+                                {isDragging ? '📂' : '☁️'}
+                            </span>
+                            <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                {isDragging ? 'Drop it!' : 'Upload File'}
+                            </p>
+                            <p className="text-xs text-gray-500 px-4">Drag & drop or click to browse</p>
+                            <p className="text-[10px] text-gray-400 mt-2">JPG, PNG, PDF (Max 5MB)</p>
+                        </div>
+                    )}
+                    
+                    <input type="file" ref={fileInputRef} accept="image/*,.pdf" onChange={handleFileChange} className="hidden" />
                 </div>
-              ) : (
-                <Image src={previewUrl} alt="Preview" fill className="object-contain" />
-              )}
-              {/* Overlay saat hover agar user tau bisa ganti */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 flex items-center justify-center text-white font-medium rounded-lg transition-opacity">
-                Click or Drop to Change
-              </div>
             </div>
-          ) : (
-            <div className="text-center text-gray-500">
-              <span className={`text-4xl block mb-2 transition-transform ${isDragging ? 'scale-110' : ''}`}>
-                {isDragging ? '📂' : '☁️'}
-              </span>
-              <p className="font-medium text-gray-700 dark:text-gray-300">
-                {isDragging ? 'Drop file here' : 'Click or Drag file here'}
-              </p>
-              <p className="text-xs mt-1">JPG, PNG, PDF (Max 5MB)</p>
+        </div>
+
+        {/* RIGHT: Details Form (2/3) */}
+        <div className="lg:col-span-2">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 border border-gray-100 dark:border-gray-700 shadow-sm">
+                <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
+                    <span>📝</span> Certificate Details
+                </h2>
+
+                <div className="space-y-6">
+                    {/* Title */}
+                    <div>
+                        <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Certificate Name <span className="text-red-500">*</span></label>
+                        <input required type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. AWS Certified Cloud Practitioner"
+                            className="w-full p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Issuer */}
+                        <div>
+                            <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Issuer Organization <span className="text-red-500">*</span></label>
+                            <input required type="text" value={issuer} onChange={(e) => setIssuer(e.target.value)} placeholder="e.g. Amazon Web Services"
+                                className="w-full p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+                        </div>
+
+                        {/* Date */}
+                        <div>
+                            <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Issue Date <span className="text-red-500">*</span></label>
+                            <input required type="date" value={issuedAt} onChange={(e) => setIssuedAt(e.target.value)}
+                                className="w-full p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-gray-600 dark:text-gray-300" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Type */}
+                        <div>
+                            <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Category</label>
+                            <div className="relative">
+                                <select value={type} onChange={(e) => setType(e.target.value)}
+                                    className="w-full p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 outline-none focus:border-blue-500 appearance-none cursor-pointer">
+                                    <option value="Competence">🏅 Competence (Keahlian)</option>
+                                    <option value="Achievement">🏆 Achievement (Prestasi)</option>
+                                    <option value="General">📜 General (Seminar/Event)</option>
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">▼</div>
+                            </div>
+                        </div>
+
+                        {/* Link */}
+                        <div>
+                            <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Credential URL <span className="normal-case font-normal text-gray-400">(Optional)</span></label>
+                            <input type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://..."
+                                className="w-full p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Actions */}
+                <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-4">
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="px-8 py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg hover:shadow-blue-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        {loading ? (
+                            <>
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Saving...
+                            </>
+                        ) : (
+                            'Save Certificate'
+                        )}
+                    </button>
+                </div>
             </div>
-          )}
-
-          <input
-            type="file"
-            accept="image/*,.pdf"
-            onChange={handleFileChange}
-            className="absolute inset-0 opacity-0 cursor-pointer"
-          />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Certificate Type</label>
-          <div className="relative">
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 outline-none focus:border-blue-500 appearance-none cursor-pointer"
-            >
-              <option value="Competence">🏅 Competence (Keahlian)</option>
-              <option value="Achievement">🏆 Achievement (Prestasi/Lomba)</option>
-              <option value="General">📜 General (Seminar/Event)</option>
-            </select>
-            <div className="absolute right-4 top-3.5 pointer-events-none text-gray-500">▼</div>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Certificate Name</label>
-          <input required type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-            className="w-full p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 outline-none focus:border-blue-500 transition-colors" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Issuer</label>
-            <input required type="text" value={issuer} onChange={(e) => setIssuer(e.target.value)}
-              className="w-full p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 outline-none focus:border-blue-500 transition-colors" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Issue Date</label>
-            <input required type="date" value={issuedAt} onChange={(e) => setIssuedAt(e.target.value)}
-              className="w-full p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 outline-none focus:border-blue-500 transition-colors" />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Credential URL</label>
-          <input type="url" value={link} onChange={(e) => setLink(e.target.value)}
-            className="w-full p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 outline-none focus:border-blue-500 transition-colors" placeholder="https://..." />
-        </div>
-
-        <button type="submit" disabled={loading}
-          className="w-full py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:scale-[1.01] transition-transform shadow-lg shadow-blue-500/20 disabled:opacity-70">
-          {loading ? 'Saving...' : 'Save Certificate'}
-        </button>
       </form>
+
+      <Toast show={toast.show} message={toast.message} type={toast.type} />
     </div>
   );
 }
