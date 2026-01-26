@@ -17,3 +17,34 @@ export async function DELETE(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const supabase = await createClient();
+  
+  // 1. Cek User (Keamanan)
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // 2. Ambil data baru dari body
+  const body = await request.json();
+
+  // 3. Update ke Supabase
+  const { error } = await supabase
+    .from('journeys')
+    .update({
+      title: body.title,
+      company: body.company,
+      period: body.period,
+      description: body.description,
+      // updated_at: new Date().toISOString(), // Opsional: jika ada kolom ini
+    })
+    .eq('id', id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  
+  return NextResponse.json({ success: true });
+}
